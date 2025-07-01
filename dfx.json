@@ -1,0 +1,45 @@
+{
+  "canisters": {
+    "bitfinance_backend": {
+      "candid": "src/bitfinance_backend/bitfinance_backend.did",
+      "package": "bitfinance_backend",
+      "type": "rust"
+    },
+    "bitfinance_frontend": {
+      "dependencies": [
+        "bitfinance_backend"
+      ],
+      "source": [
+        "src/bitfinance_frontend/dist"
+      ],
+      "type": "assets",
+      "workspace": "bitfinance_frontend"
+    },
+    "internet_identity": {
+      "candid": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity.did",
+      "frontend": {},
+      "remote": {
+        "id": {
+          "ic": "rdmx6-jaaaa-aaaaa-aaadq-cai"
+        }
+      },
+      "type": "custom",
+      "wasm": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity_dev.wasm.gz"
+    }
+  },
+  "defaults": {
+    "bitcoin": {
+      "enabled": true,
+      "log_level": "info",
+      "nodes": [
+        "127.0.0.1:18444"
+      ]
+    },
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}
