@@ -1,3 +1,50 @@
+type UserData = record {
+    user_principal : principal;
+    ckbtc_balance : nat64;
+    loans : nat64;
+    staked : nat64;
+    lent : nat64;
+    farmed : nat64;
+    stake_timestamp : opt nat64;
+    lend_timestamp : opt nat64;
+    farm_timestamp : opt nat64
+};
+
+type TransferArg = record {
+    to : principal;
+    amount : nat;
+    fee : opt nat;
+    memo : opt vec nat8;
+    from_subaccount : opt vec nat8;
+    created_at_time : opt nat64
+};
+
+type TransferResult = variant {
+    Ok : opt nat;
+    Err : opt text
+};
+
+type Record = record {
+    owner : principal
+};
+
 service : {
-    "greet": (text) -> (text) query;
+    whoami : () -> (principal) query;
+    register_user : () -> (text);
+    get_user_data : (principal) -> (opt UserData) query;
+    deposit_ckbtc : (nat64) -> (text);
+    borrow_ckbtc : (nat64) -> (text);
+    repay_loan_ckbtc : (nat64) -> (text);
+    stake_ckbtc : (nat64) -> (text);
+    unstake_ckbtc : (nat64) -> (text);
+    claim_staking_rewards : () -> (text);
+    lend_ckbtc : (nat64) -> (text);
+    unlend_ckbtc : (nat64) -> (text);
+    claim_lending_rewards : () -> (text);
+    yield_farm_ckbtc : (nat64) -> (text);
+    unfarm_ckbtc : (nat64) -> (text);
+    claim_yield_farming_rewards : () -> (text);
+    transfer_ckbtc : (principal, nat64) -> (text);
+    withdraw_ckbtc : (nat64) -> (text);
+    get_real_ckbtc_balance : () -> (variant { Ok : nat64; Err : text })
 }
