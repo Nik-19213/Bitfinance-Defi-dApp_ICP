@@ -53,7 +53,6 @@ dependencies = [
  "lazy_static",
  "num-traits",
  "serde",
- "serde_bytes",
 ]
 
 [[package]]

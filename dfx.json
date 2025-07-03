@@ -5,6 +5,11 @@
       "package": "bitfinance_backend",
       "type": "rust"
     },
+    "icrc1_ledger_canister": {
+      "type": "custom",
+      "candid": "https://github.com/dfinity/ic/releases/download/ledger-suite-icrc-2025-06-19/ledger.did",
+      "wasm": "https://github.com/dfinity/ic/releases/download/ledger-suite-icrc-2025-06-19/ic-icrc1-ledger.wasm.gz"
+    },
     "bitfinance_frontend": {
       "dependencies": [
         "bitfinance_backend"
