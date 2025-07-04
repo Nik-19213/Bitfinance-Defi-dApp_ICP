@@ -38,7 +38,7 @@ type ApproveError = variant {
     GenericError : record { error_code : nat; message : text }
 };
 
-type AllowanceResponse = record {
+type Allowance = record {
     allowance : nat;
     expires_at : opt nat64
 };
@@ -74,7 +74,7 @@ service : {
     pause_contract : () -> (text);
     unpause_contract : () -> (text);
     get_real_ckbtc_balance : (opt principal) -> (variant { Ok : nat64; Err : text });
-    check_allowance : (principal) -> (variant { Ok : AllowanceResponse; Err : text });
+    check_allowance : (principal) -> (variant { Ok : Allowance; Err : text });
     get_user_data : (principal) -> (opt UserData) query;
     get_my_data : () -> (opt UserData) query;
     get_pending_staking_rewards : (opt principal) -> (nat64) query;

@@ -4,7 +4,6 @@ use ic_cdk_macros::*;
 use std::collections::HashMap;
 use serde::Serialize;
 use num_traits::cast::ToPrimitive;
-use ic_cdk::call;
 
 const STAKING_RATE: f64 = 0.10;
 const BORROW_RATE: f64 = 0.12;
@@ -245,31 +244,38 @@ fn calculate_interest(amount: u64, timestamp: Option<u64>, rate: f64) -> u64 {
 }
 
 #[derive(CandidType, Deserialize)]
-struct AllowanceResponse {
+struct AllowanceArgs {
+    account: Account,
+    spender: Account,
+}
+
+#[derive(CandidType, Deserialize)]
+struct Allowance {
     allowance: Nat,
     expires_at: Option<u64>,
 }
 
 #[update]
-async fn check_allowance(owner: Principal) -> Result<AllowanceResponse, String> {
-    let account = Account {
-        owner,
-        subaccount: None,
+async fn check_allowance(owner: Principal) -> Result<Allowance, String> {
+    let args = AllowanceArgs {
+        account: Account {
+            owner,
+            subaccount: None,
+        },
+        spender: Account {
+            owner: ic_cdk::id(),
+            subaccount: None,
+        },
     };
 
-    let spender = Account {
-        owner: ic_cdk::id(),
-        subaccount: None,
-    };
-
-    let result: Result<(AllowanceResponse,), _> = ic_cdk::call(
+    let result: Result<(Allowance,), _> = ic_cdk::call(
         *CKBTC_CANISTER_ID,
         "icrc2_allowance",
-        (account, spender),
+        (args,),
     ).await;
 
     match result {
-        Ok((response,)) => Ok(response),
+        Ok((allowance,)) => Ok(allowance),
         Err(e) => Err(format!("Failed to check allowance: {:?}", e)),
     }
 }
@@ -375,7 +381,7 @@ async fn deposit_ckbtc(amount: u64) -> String {
             // Check allowance first
             match check_allowance(user).await {
                 Ok(allowance) => {
-                    if allowance < amount {
+                    if allowance.allowance.0.to_u64().unwrap_or(0) < amount {
                         return format!("Insufficient allowance. Please approve {} satoshis in your Plug wallet first.", amount);
                     }
                 }
@@ -458,6 +464,7 @@ async fn borrow_ckbtc(amount: u64) -> String {
                 Ok(tx_id) => {
                     data.loans += amount;
                     data.loan_timestamp = Some(ic_cdk::api::time());
+                    data.ckbtc_balance += amount; // Add borrowed amount to balance
                     format!("Borrowed {} satoshis. Transaction ID: {}. Remember to repay with {}% annual interest.", 
                         amount, tx_id, (BORROW_RATE * 100.0) as u32)
                 }
@@ -498,7 +505,7 @@ async fn repay_loan_ckbtc(amount: u64) -> String {
             // Check allowance first
             match check_allowance(user).await {
                 Ok(allowance) => {
-                    if allowance < amount {
+                    if allowance.allowance.0.to_u64().unwrap_or(0) < amount {
                         return format!("Insufficient allowance. Please approve {} satoshis in your Plug wallet first.", amount);
                     }
                 }
@@ -548,7 +555,7 @@ async fn stake_ckbtc(amount: u64) -> String {
             // Check allowance first
             match check_allowance(user).await {
                 Ok(allowance) => {
-                    if allowance < amount {
+                    if allowance.allowance.0.to_u64().unwrap_or(0) < amount {
                         return format!("Insufficient allowance. Please approve {} satoshis in your Plug wallet first.", amount);
                     }
                 }
@@ -558,6 +565,10 @@ async fn stake_ckbtc(amount: u64) -> String {
             match transfer_ckbtc_from_user_to_canister(user, amount).await {
                 Ok(tx_id) => {
                     let actual_amount = amount - CKBTC_TRANSFER_FEE;
+                    if data.ckbtc_balance < actual_amount {
+                        return format!("Insufficient ckBTC balance. You have {} satoshis.", data.ckbtc_balance);
+                    }
+                    data.ckbtc_balance -= actual_amount;
                     data.staked += actual_amount;
                     data.stake_timestamp = Some(ic_cdk::api::time());
                     format!("Staked {} satoshis (fee: {} satoshis). Earning {}% annual rewards. Transaction ID: {}", 
@@ -589,17 +600,16 @@ async fn unstake_ckbtc(amount: u64) -> String {
             if data.staked < amount {
                 return format!("Insufficient staked amount. Staked: {} satoshis", data.staked);
             }
-
             let rewards = calculate_interest(data.staked, data.stake_timestamp, STAKING_RATE);
             let total_amount = amount + rewards;
-
             match transfer_ckbtc_from_canister_to_user(user, total_amount).await {
                 Ok(tx_id) => {
                     data.staked -= amount;
+                    data.ckbtc_balance += amount; // Add back principal to balance
                     if data.staked == 0 {
                         data.stake_timestamp = None;
                     } else {
-                        data.stake_timestamp = Some(ic_cdk::api::time()); // Reset for remaining stake
+                        data.stake_timestamp = Some(ic_cdk::api::time());
                     }
                     format!("Unstaked {} satoshis + {} rewards. Transaction ID: {}", amount, rewards, tx_id)
                 }
@@ -629,7 +639,7 @@ async fn lend_ckbtc(amount: u64) -> String {
             // Check allowance first
             match check_allowance(user).await {
                 Ok(allowance) => {
-                    if allowance < amount {
+                    if allowance.allowance.0.to_u64().unwrap_or(0) < amount {
                         return format!("Insufficient allowance. Please approve {} satoshis in your Plug wallet first.", amount);
                     }
                 }
@@ -639,6 +649,10 @@ async fn lend_ckbtc(amount: u64) -> String {
             match transfer_ckbtc_from_user_to_canister(user, amount).await {
                 Ok(tx_id) => {
                     let actual_amount = amount - CKBTC_TRANSFER_FEE;
+                    if data.ckbtc_balance < actual_amount {
+                        return format!("Insufficient ckBTC balance. You have {} satoshis.", data.ckbtc_balance);
+                    }
+                    data.ckbtc_balance -= actual_amount;
                     data.lent += actual_amount;
                     data.lend_timestamp = Some(ic_cdk::api::time());
                     format!("Lent {} satoshis (fee: {} satoshis). Earning {}% annual rewards. Transaction ID: {}", 
@@ -670,17 +684,16 @@ async fn unlend_ckbtc(amount: u64) -> String {
             if data.lent < amount {
                 return format!("Insufficient lent amount. Lent: {} satoshis", data.lent);
             }
-
             let rewards = calculate_interest(data.lent, data.lend_timestamp, LENDING_REWARD);
             let total_amount = amount + rewards;
-
             match transfer_ckbtc_from_canister_to_user(user, total_amount).await {
                 Ok(tx_id) => {
                     data.lent -= amount;
+                    data.ckbtc_balance += amount; // Add back principal to balance
                     if data.lent == 0 {
                         data.lend_timestamp = None;
                     } else {
-                        data.lend_timestamp = Some(ic_cdk::api::time()); // Reset for remaining lent amount
+                        data.lend_timestamp = Some(ic_cdk::api::time());
                     }
                     format!("Unlent {} satoshis + {} rewards. Transaction ID: {}", amount, rewards, tx_id)
                 }
@@ -710,7 +723,7 @@ async fn yield_farm_ckbtc(amount: u64) -> String {
             // Check allowance first
             match check_allowance(user).await {
                 Ok(allowance) => {
-                    if allowance < amount {
+                    if allowance.allowance.0.to_u64().unwrap_or(0) < amount {
                         return format!("Insufficient allowance. Please approve {} satoshis in your Plug wallet first.", amount);
                     }
                 }
@@ -720,6 +733,10 @@ async fn yield_farm_ckbtc(amount: u64) -> String {
             match transfer_ckbtc_from_user_to_canister(user, amount).await {
                 Ok(tx_id) => {
                     let actual_amount = amount - CKBTC_TRANSFER_FEE;
+                    if data.ckbtc_balance < actual_amount {
+                        return format!("Insufficient ckBTC balance. You have {} satoshis.", data.ckbtc_balance);
+                    }
+                    data.ckbtc_balance -= actual_amount;
                     data.farmed += actual_amount;
                     data.farm_timestamp = Some(ic_cdk::api::time());
                     format!("Started yield farming with {} satoshis (fee: {} satoshis). Earning {}% annual rewards. Transaction ID: {}", 
@@ -751,17 +768,16 @@ async fn unfarm_ckbtc(amount: u64) -> String {
             if data.farmed < amount {
                 return format!("Insufficient farmed amount. Farmed: {} satoshis", data.farmed);
             }
-
             let rewards = calculate_interest(data.farmed, data.farm_timestamp, YIELD_FARMING_REWARD);
             let total_amount = amount + rewards;
-
             match transfer_ckbtc_from_canister_to_user(user, total_amount).await {
                 Ok(tx_id) => {
                     data.farmed -= amount;
+                    data.ckbtc_balance += amount; // Add back principal to balance
                     if data.farmed == 0 {
                         data.farm_timestamp = None;
                     } else {
-                        data.farm_timestamp = Some(ic_cdk::api::time()); // Reset for remaining farmed amount
+                        data.farm_timestamp = Some(ic_cdk::api::time());
                     }
                     format!("Stopped farming {} satoshis + {} rewards. Transaction ID: {}", amount, rewards, tx_id)
                 }
@@ -792,6 +808,7 @@ async fn claim_staking_rewards() -> String {
             match transfer_ckbtc_from_canister_to_user(user, rewards).await {
                 Ok(tx_id) => {
                     data.stake_timestamp = Some(ic_cdk::api::time());
+                    data.ckbtc_balance += rewards; // Update balance after claiming
                     format!("Claimed {} satoshis as staking rewards. Transaction ID: {}", rewards, tx_id)
                 }
                 Err(e) => format!("Claim failed: {}", e),
@@ -820,6 +837,7 @@ async fn claim_lending_rewards() -> String {
             match transfer_ckbtc_from_canister_to_user(user, rewards).await {
                 Ok(tx_id) => {
                     data.lend_timestamp = Some(ic_cdk::api::time());
+                    data.ckbtc_balance += rewards; // Update balance after claiming
                     format!("Claimed {} satoshis as lending rewards. Transaction ID: {}", rewards, tx_id)
                 }
                 Err(e) => format!("Claim failed: {}", e),
@@ -848,6 +866,7 @@ async fn claim_yield_farming_rewards() -> String {
             match transfer_ckbtc_from_canister_to_user(user, rewards).await {
                 Ok(tx_id) => {
                     data.farm_timestamp = Some(ic_cdk::api::time());
+                    data.ckbtc_balance += rewards; // Update balance after claiming
                     format!("Claimed {} satoshis as yield farming rewards. Transaction ID: {}", rewards, tx_id)
                 }
                 Err(e) => format!("Claim failed: {}", e),
