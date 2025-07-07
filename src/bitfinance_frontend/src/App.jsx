@@ -77,6 +77,47 @@ function App() {
         setUserData(res);
     };
 
+    // Add handlers for all DeFi operations
+    const stakeCkbtc = () => {
+        if (!amount) return setResult("Enter amount");
+        callBackend("stake_ckbtc", [BigInt(amount)]);
+    };
+    const unstakeCkbtc = () => {
+        if (!amount) return setResult("Enter amount");
+        callBackend("unstake_ckbtc", [BigInt(amount)]);
+    };
+    const lendCkbtc = () => {
+        if (!amount) return setResult("Enter amount");
+        callBackend("lend_ckbtc", [BigInt(amount)]);
+    };
+    const unlendCkbtc = () => {
+        if (!amount) return setResult("Enter amount");
+        callBackend("unlend_ckbtc", [BigInt(amount)]);
+    };
+    const yieldFarmCkbtc = () => {
+        if (!amount) return setResult("Enter amount");
+        callBackend("yield_farm_ckbtc", [BigInt(amount)]);
+    };
+    const unfarmCkbtc = () => {
+        if (!amount) return setResult("Enter amount");
+        callBackend("unfarm_ckbtc", [BigInt(amount)]);
+    };
+    const borrowCkbtc = () => {
+        if (!amount) return setResult("Enter amount");
+        callBackend("borrow_ckbtc", [BigInt(amount)]);
+    };
+    const repayLoanCkbtc = () => {
+        if (!amount) return setResult("Enter amount");
+        callBackend("repay_loan_ckbtc", [BigInt(amount)]);
+    };
+    const claimStakingRewards = () => callBackend("claim_staking_rewards");
+    const claimLendingRewards = () => callBackend("claim_lending_rewards");
+    const claimYieldFarmingRewards = () => callBackend("claim_yield_farming_rewards");
+
+    // Add these constants for display
+    const CKBTC_CANISTER_ID = "uxrrr-q7777-77774-qaaaq-cai"; // testnet, change if mainnet
+    const BACKEND_CANISTER_ID_DISPLAY = BACKEND_CANISTER_ID || "your-backend-canister-id";
+
     return (
         <div style={{ maxWidth: 600, margin: "2rem auto", fontFamily: "sans-serif" }}>
             <h2>BitFinance DeFi Dapp (Plug Wallet Demo)</h2>
@@ -95,6 +136,17 @@ function App() {
             />
             <button onClick={depositCkbtc}>Deposit ckBTC</button>
             <button onClick={withdrawCkbtc}>Withdraw ckBTC</button>
+            <button onClick={stakeCkbtc}>Stake ckBTC</button>
+            <button onClick={unstakeCkbtc}>Unstake ckBTC</button>
+            <button onClick={lendCkbtc}>Lend ckBTC</button>
+            <button onClick={unlendCkbtc}>Unlend ckBTC</button>
+            <button onClick={yieldFarmCkbtc}>Yield Farm ckBTC</button>
+            <button onClick={unfarmCkbtc}>Unfarm ckBTC</button>
+            <button onClick={borrowCkbtc}>Borrow ckBTC</button>
+            <button onClick={repayLoanCkbtc}>Repay Loan ckBTC</button>
+            <button onClick={claimStakingRewards}>Claim Staking Rewards</button>
+            <button onClick={claimLendingRewards}>Claim Lending Rewards</button>
+            <button onClick={claimYieldFarmingRewards}>Claim Yield Farming Rewards</button>
             <br /><br />
             <button onClick={getMyData}>Get My Data</button>
             {userData && (
@@ -127,6 +179,25 @@ function App() {
             </div>
             <div style={{ marginTop: "2em", fontSize: "0.9em", color: "#888" }}>
                 <b>Note:</b> This is a minimal demo. For production, use your generated JS bindings and handle Plug wallet errors and user flows more robustly.
+            </div>
+            <div style={{ background: "#fffbe7", border: "1px solid #ffe58f", padding: "1em", marginTop: "1em" }}>
+                <b>🔑 Before using DeFi functions:</b>
+                <ol>
+                    <li>Open your Plug wallet.</li>
+                    <li>Go to the <b>ckBTC</b> token.</li>
+                    <li>Find and use the <b>Approve</b> function.</li>
+                    <li>
+                        Approve <b>{BACKEND_CANISTER_ID_DISPLAY}</b> (your DeFi backend canister) to spend your ckBTC.<br />
+                        <span style={{ fontSize: "0.9em" }}>
+                            <b>ckBTC Canister ID:</b> {CKBTC_CANISTER_ID}
+                        </span>
+                    </li>
+                    <li>Set the amount you want to allow for DeFi operations.</li>
+                    <li>After approving, you can deposit, stake, lend, etc.</li>
+                </ol>
+                <div style={{ fontSize: "0.9em", color: "#888" }}>
+                    <b>Note:</b> Approval is a one-time action per amount. If you want to increase your limit, approve again.
+                </div>
             </div>
         </div>
     );
