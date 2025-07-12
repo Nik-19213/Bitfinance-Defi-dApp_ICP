@@ -20,11 +20,11 @@ function Navbar() {
 
       {/* Menu Links Stylish */}
       <div className="flex space-x-5 text-sm font-semibold uppercase tracking-wide">
-         <Link to="/register" className="hover:text-yellow-400 transition duration-200 hover:scale-105">
-          Register
-        </Link>
         <Link to="/" className="hover:text-yellow-400 transition duration-200 hover:scale-105">
           Home
+        </Link>
+        <Link to="/stake" className="hover:text-yellow-400 transition duration-200 hover:scale-105">
+          Stake
         </Link>
         <Link to="/lend" className="hover:text-yellow-400 transition duration-200 hover:scale-105">
           Lend
@@ -35,21 +35,18 @@ function Navbar() {
         <Link to="/yield" className="hover:text-yellow-400 transition duration-200 hover:scale-105">
           Yield
         </Link>
-        <Link to="/stake" className="hover:text-yellow-400 transition duration-200 hover:scale-105">
-          Stake
-        </Link>
-        <Link to="/transactions" className="hover:text-yellow-400 transition duration-200 hover:scale-105">
-          Transactions
-        </Link>
         <Link to="/dashboard" className="hover:text-yellow-400 transition duration-200 hover:scale-105">
           Dashboard
         </Link>
-       
+        <Link to="/register" className="hover:text-yellow-400 transition duration-200 hover:scale-105">
+          Register
+        </Link>
+
       </div>
 
       {/* Right Wallet & Theme */}
       <div className="flex items-center gap-4">
-        
+
         {principal ? (
           <>
             <span className="text-sm bg-gray-700 px-2 py-1 rounded">

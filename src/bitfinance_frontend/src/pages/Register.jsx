@@ -1,13 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { UserPlus, ArrowRight } from "lucide-react";
+import { bitfinance_backend } from "../../../declarations/bitfinance_backend";
+import { AuthContext } from "../context/AuthContext";
 
 const Register = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const { principal } = useContext(AuthContext);
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
 
     if (password !== confirm) {
@@ -15,17 +18,20 @@ const Register = () => {
       return;
     }
 
-    console.log("Name:", name);
-    console.log("Email:", email);
-    console.log("Password:", password);
-    alert("Registration successful ✅");
+    // Call backend register_user
+    try {
+      const result = await bitfinance_backend.register_user();
+      alert(result);
+    } catch (err) {
+      alert("Registration failed: " + err);
+    }
   };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-black via-gray-900 to-black px-4 relative">
       {/* Page Heading */}
       <h1 className="text-4xl font-extrabold mb-8 bg-gradient-to-r from-yellow-400 to-orange-500 text-transparent bg-clip-text flex items-center gap-2">
-        <UserPlus className="w-10 h-10" /> Register
+        Register
       </h1>
 
       {/* Registration Form */}
@@ -35,7 +41,9 @@ const Register = () => {
       >
         {/* Name */}
         <div className="mb-5">
-          <label className="block text-gray-300 mb-2 text-left text-sm">Full Name</label>
+          <label className="block text-gray-300 mb-2 text-left text-sm">
+            Full Name
+          </label>
           <input
             type="text"
             value={name}
@@ -47,7 +55,9 @@ const Register = () => {
 
         {/* Email */}
         <div className="mb-5">
-          <label className="block text-gray-300 mb-2 text-left text-sm">Email Address</label>
+          <label className="block text-gray-300 mb-2 text-left text-sm">
+            Email Address
+          </label>
           <input
             type="email"
             value={email}
@@ -59,7 +69,9 @@ const Register = () => {
 
         {/* Password */}
         <div className="mb-5">
-          <label className="block text-gray-300 mb-2 text-left text-sm">Password</label>
+          <label className="block text-gray-300 mb-2 text-left text-sm">
+            Password
+          </label>
           <input
             type="password"
             value={password}
@@ -71,7 +83,9 @@ const Register = () => {
 
         {/* Confirm Password */}
         <div className="mb-8">
-          <label className="block text-gray-300 mb-2 text-left text-sm">Confirm Password</label>
+          <label className="block text-gray-300 mb-2 text-left text-sm">
+            Confirm Password
+          </label>
           <input
             type="password"
             value={confirm}
