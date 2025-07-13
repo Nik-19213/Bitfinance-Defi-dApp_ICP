@@ -16,7 +16,10 @@ const Borrow = () => {
       try {
         const data = await bitfinance_backend.get_my_data();
         if (data && data.length > 0) setUserData(data[0]);
-      } catch (err) { }
+        else setUserData({ loans: 0, loan_timestamp: null });
+      } catch (err) {
+        setUserData({ loans: 0, loan_timestamp: null });
+      }
     };
     fetchData();
   }, [principal]);
@@ -50,10 +53,10 @@ const Borrow = () => {
         {/* Borrowed Amount Display - right upper corner */}
         <div className="mb-6 md:mb-0 md:ml-auto bg-gray-900 rounded-xl px-6 py-4 border border-yellow-500 text-center min-w-[260px]">
           <div className="text-lg text-yellow-400 font-bold">
-            Borrowed: {userData ? (userData.loans / 1e8).toFixed(8) : "0.00000000"} ckBTC
+            Borrowed: {(Number(userData?.loans ?? 0) / 1e8).toFixed(8)} ckBTC
           </div>
           <div className="text-gray-400 text-sm">
-            {userData && userData.loan_timestamp
+            {userData && userData.loan_timestamp && Number(userData.loan_timestamp) > 0
               ? "Since: " +
               new Date(Number(userData.loan_timestamp) * 1000).toLocaleString()
               : "No active loan"}
@@ -67,13 +70,15 @@ const Borrow = () => {
         className="bg-black bg-opacity-80 p-8 rounded-3xl shadow-2xl w-full max-w-md border border-gray-700 backdrop-blur-lg"
       >
         {/* Amount Input */}
+        <h2 className="text-xl font-bold text-white mb-4">Borrow</h2>
         <div className="mb-6">
           <label className="block text-gray-300 mb-2 text-left text-sm">
             Amount to Borrow (ckBTC)
           </label>
           <input
             type="number"
-            step="0.0001"
+            step="0.00000001"
+            min="0"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             required
@@ -102,7 +107,8 @@ const Borrow = () => {
           </label>
           <input
             type="number"
-            step="0.0001"
+            step="0.00000001"
+            min="0"
             value={repayAmount}
             onChange={(e) => setRepayAmount(e.target.value)}
             required

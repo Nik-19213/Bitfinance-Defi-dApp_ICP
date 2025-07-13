@@ -16,7 +16,10 @@ const YieldFarm = () => {
       try {
         const data = await bitfinance_backend.get_my_data();
         if (data && data.length > 0) setUserData(data[0]);
-      } catch (err) { }
+        else setUserData({ farmed: 0, farm_timestamp: null });
+      } catch (err) {
+        setUserData({ farmed: 0, farm_timestamp: null });
+      }
     };
     fetchData();
   }, [principal]);
@@ -51,10 +54,10 @@ const YieldFarm = () => {
         {/* Farmed Amount Display - right upper corner */}
         <div className="mb-6 md:mb-0 md:ml-auto bg-gray-900 rounded-xl px-6 py-4 border border-yellow-500 text-center min-w-[260px]">
           <div className="text-lg text-yellow-400 font-bold">
-            Farmed: {userData ? (userData.farmed / 1e8).toFixed(8) : "0.00000000"} ckBTC
+            Farmed: {(Number(userData?.farmed ?? 0) / 1e8).toFixed(8)} ckBTC
           </div>
           <div className="text-gray-400 text-sm">
-            {userData && userData.farm_timestamp
+            {userData && userData.farm_timestamp && Number(userData.farm_timestamp) > 0
               ? "Since: " +
               new Date(Number(userData.farm_timestamp) * 1000).toLocaleString()
               : "No active farming"}
@@ -67,13 +70,15 @@ const YieldFarm = () => {
         className="bg-black bg-opacity-80 p-8 rounded-3xl shadow-2xl w-full max-w-md border border-gray-700 backdrop-blur-lg"
       >
         {/* Farming Amount */}
+        <h2 className="text-xl font-bold text-white mb-4">Farm</h2>
         <div className="mb-6">
           <label className="block text-gray-300 mb-2 text-left text-sm">
             Amount to Farm (ckBTC)
           </label>
           <input
             type="number"
-            step="0.0001"
+            step="0.00000001"
+            min="0"
             value={farmAmount}
             onChange={(e) => setFarmAmount(e.target.value)}
             required
@@ -102,7 +107,8 @@ const YieldFarm = () => {
           </label>
           <input
             type="number"
-            step="0.0001"
+            step="0.00000001"
+            min="0"
             value={unfarmAmount}
             onChange={(e) => setUnfarmAmount(e.target.value)}
             required

@@ -16,7 +16,10 @@ const Lend = () => {
       try {
         const data = await bitfinance_backend.get_my_data();
         if (data && data.length > 0) setUserData(data[0]);
-      } catch (err) { }
+        else setUserData({ lent: 0, lend_timestamp: null });
+      } catch (err) {
+        setUserData({ lent: 0, lend_timestamp: null });
+      }
     };
     fetchData();
   }, [principal]);
@@ -50,10 +53,10 @@ const Lend = () => {
         {/* Lent Amount Display - right upper corner */}
         <div className="mb-6 md:mb-0 md:ml-auto bg-gray-900 rounded-xl px-6 py-4 border border-yellow-500 text-center min-w-[260px]">
           <div className="text-lg text-yellow-400 font-bold">
-            Lent: {userData ? (userData.lent / 1e8).toFixed(8) : "0.00000000"} ckBTC
+            Lent: {(Number(userData?.lent ?? 0) / 1e8).toFixed(8)} ckBTC
           </div>
           <div className="text-gray-400 text-sm">
-            {userData && userData.lend_timestamp
+            {userData && userData.lend_timestamp && Number(userData.lend_timestamp) > 0
               ? "Since: " +
               new Date(Number(userData.lend_timestamp) * 1000).toLocaleString()
               : "No active lending"}
@@ -72,7 +75,8 @@ const Lend = () => {
           </label>
           <input
             type="number"
-            step="0.0001"
+            step="0.00000001"
+            min="0"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             required
@@ -100,7 +104,8 @@ const Lend = () => {
           </label>
           <input
             type="number"
-            step="0.0001"
+            step="0.00000001"
+            min="0"
             value={unlendAmount}
             onChange={(e) => setUnlendAmount(e.target.value)}
             required

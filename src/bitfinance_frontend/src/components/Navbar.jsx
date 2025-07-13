@@ -1,11 +1,23 @@
 import { Link } from "react-router-dom";
-import { useContext } from "react";
+import { useContext, useState, useEffect } from "react";
 import { AuthContext } from "../context/AuthContext";
-
 import { Bitcoin } from "lucide-react";
 
 function Navbar() {
   const { principal, login, logout } = useContext(AuthContext);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(principal);
+    setCopied(true);
+  };
+
+  useEffect(() => {
+    if (copied) {
+      const timer = setTimeout(() => setCopied(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [copied]);
 
   return (
     <nav className="bg-gray-900 text-white p-5 flex justify-between items-center shadow-lg border-b border-yellow-500">
@@ -41,17 +53,26 @@ function Navbar() {
         <Link to="/register" className="hover:text-yellow-400 transition duration-200 hover:scale-105">
           Register
         </Link>
-
       </div>
 
       {/* Right Wallet & Theme */}
-      <div className="flex items-center gap-4">
-
+      <div className="flex items-center gap-4 relative">
         {principal ? (
           <>
-            <span className="text-sm bg-gray-700 px-2 py-1 rounded">
-              {principal.slice(0, 5)}...{principal.slice(-5)}
-            </span>
+            <button
+              onClick={handleCopy}
+              title="Click to copy principal"
+              className="relative text-sm bg-gray-600 px-2 py-1 rounded hover:bg-gray-600 transition cursor-pointer"
+            >
+              {principal.slice(0, 8)}...{principal.slice(-5)}
+            </button>
+
+            {copied && (
+              <div className="absolute top-full left-0 mt-1 text-xs text-white bg-gray-800 px-2 py-0.5 rounded shadow-lg">
+                Copied!
+              </div>
+            )}
+
             <button
               onClick={logout}
               className="bg-red-500 text-white px-4 py-1 rounded hover:bg-red-600 transition"
@@ -64,7 +85,7 @@ function Navbar() {
             onClick={login}
             className="bg-yellow-400 text-black px-4 py-1 rounded hover:bg-yellow-300 transition"
           >
-            Connect Wallet
+            Connect Identity
           </button>
         )}
       </div>

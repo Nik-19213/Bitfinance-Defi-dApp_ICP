@@ -20,6 +20,7 @@ const Dashboard = () => {
     try {
       const data = await bitfinance_backend.get_my_data();
       if (data && data.length > 0) setUserData(data[0]);
+      else setUserData({ ckbtc_balance: 0 });
       // Rewards
       const sr = await bitfinance_backend.get_pending_staking_rewards();
       setStakingRewards(Number(sr));
@@ -28,7 +29,7 @@ const Dashboard = () => {
       const fr = await bitfinance_backend.get_pending_yield_farming_rewards();
       setFarmingRewards(Number(fr));
     } catch (err) {
-      // handle error
+      setUserData({ ckbtc_balance: 0 });
     }
     setLoading(false);
   };
@@ -141,7 +142,7 @@ const Dashboard = () => {
               <span className="text-lg text-gray-300">Your Total ckBTC Balance</span>
             </div>
             <span className="text-3xl font-extrabold text-yellow-400">
-              {userData ? (userData.ckbtc_balance / 1e8).toFixed(8) : "0.00000000"} ckBTC
+              {Number(userData?.ckbtc_balance ?? 0 / 1e8).toFixed(8)} ckBTC
             </span>
           </div>
         </div>
@@ -158,7 +159,7 @@ const Dashboard = () => {
           </h2>
           <input
             type="number"
-            step="0.0001"
+            step="0.00000001"
             min="0"
             value={depositAmount}
             onChange={(e) => setDepositAmount(e.target.value)}
@@ -183,7 +184,7 @@ const Dashboard = () => {
           </h2>
           <input
             type="number"
-            step="0.0001"
+            step="0.00000001"
             min="0"
             value={withdrawAmount}
             onChange={(e) => setWithdrawAmount(e.target.value)}
@@ -206,7 +207,7 @@ const Dashboard = () => {
         <div className="bg-gray-800 p-6 rounded-2xl shadow-lg flex flex-col items-center">
           <Gift className="w-8 h-8 text-yellow-400 mb-2" />
           <h3 className="text-lg font-bold text-white mb-2">Staking Rewards</h3>
-          <p className="text-yellow-400 text-xl mb-2">{(stakingRewards / 1e8).toFixed(8)} BTC</p>
+          <p className="text-yellow-400 text-xl mb-2">{(Number(stakingRewards) / 1e8).toFixed(8)} ckBTC</p>
           <button
             onClick={handleClaimStaking}
             disabled={loading}
@@ -218,7 +219,7 @@ const Dashboard = () => {
         <div className="bg-gray-800 p-6 rounded-2xl shadow-lg flex flex-col items-center">
           <Gift className="w-8 h-8 text-yellow-400 mb-2" />
           <h3 className="text-lg font-bold text-white mb-2">Lending Rewards</h3>
-          <p className="text-yellow-400 text-xl mb-2">{(lendingRewards / 1e8).toFixed(8)} BTC</p>
+          <p className="text-yellow-400 text-xl mb-2">{(Number(lendingRewards) / 1e8).toFixed(8)} ckBTC</p>
           <button
             onClick={handleClaimLending}
             disabled={loading}
@@ -230,7 +231,7 @@ const Dashboard = () => {
         <div className="bg-gray-800 p-6 rounded-2xl shadow-lg flex flex-col items-center">
           <Gift className="w-8 h-8 text-yellow-400 mb-2" />
           <h3 className="text-lg font-bold text-white mb-2">Farming Rewards</h3>
-          <p className="text-yellow-400 text-xl mb-2">{(farmingRewards / 1e8).toFixed(8)} BTC</p>
+          <p className="text-yellow-400 text-xl mb-2">{(Number(farmingRewards) / 1e8).toFixed(8)} ckBTC</p>
           <button
             onClick={handleClaimFarming}
             disabled={loading}

@@ -11,8 +11,8 @@ import Borrow from "./pages/Borrow";
 import Dashboard from "./pages/Dashboard";
 import Yield from "./pages/Yield";
 import TransactionHistory from "./pages/TransactionHistory";
-import Register from "./pages/Register";
 import Stake from "./pages/Stake";
+import Register from "./pages/Register";
 
 function App() {
     return (
@@ -26,9 +26,8 @@ function App() {
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/yield" element={<Yield />} />
                     <Route path="/transactions" element={<TransactionHistory />} />
-                    <Route path="/register" element={<Register />} />
                     <Route path="/stake" element={<Stake />} />
-
+                    <Route path="/register" element={<Register />} />
                 </Routes>
             </div>
         </Router>

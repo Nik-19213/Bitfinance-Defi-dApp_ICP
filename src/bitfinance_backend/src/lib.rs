@@ -13,11 +13,11 @@ const SECONDS_IN_YEAR: u64 = 31_536_000;
 
 const COLLATERAL_RATIO: f64 = 2.0;
 
-const CKBTC_TRANSFER_FEE: u64 = 10;
+const CKBTC_TRANSFER_FEE: u64 = 10; 
 
 // Canister IDs for different networks
 const CKBTC_MAINNET_CANISTER_ID: &str = "mxzaz-hqaaa-aaaar-qaada-cai";
-const CKBTC_TESTNET_CANISTER_ID: &str = "uxrrr-q7777-77774-qaaaq-cai";
+const CKBTC_TESTNET_CANISTER_ID: &str = "mc6ru-gyaaa-aaaar-qaaaq-cai";   //use uxrrr-q7777-77774-qaaaq-cai for local deployemnt
 
 const IS_TESTNET: bool = true;
 
@@ -322,10 +322,10 @@ async fn transfer_ckbtc_from_user_to_canister(from: Principal, amount: u64) -> R
     match result {
         Ok((Ok(tx_id),)) => Ok(tx_id),
         Ok((Err(TransferFromError::InsufficientAllowance { allowance }),)) => {
-            Err(format!("Insufficient allowance. Current allowance: {} satoshis. Please approve more tokens in your Plug wallet.", allowance))
+            Err(format!("Insufficient allowance. Current allowance: {} ckBTC. Please approve more tokens in your Plug wallet.", allowance))
         }
         Ok((Err(TransferFromError::InsufficientFunds { balance }),)) => {
-            Err(format!("Insufficient funds. Balance: {} satoshis", balance))
+            Err(format!("Insufficient funds. Balance: {} ckBTC", balance))
         }
         Ok((Err(e),)) => Err(format!("Transfer failed: {:?}", e)),
         Err(e) => Err(format!("Call failed: {:?}", e)),
@@ -351,45 +351,45 @@ async fn transfer_ckbtc_from_canister_to_user(to: Principal, amount: u64) -> Res
     match result {
         Ok((Ok(tx_id),)) => Ok(tx_id),
         Ok((Err(TransferError::InsufficientFunds { balance }),)) => {
-            Err(format!("Canister has insufficient funds. Balance: {} satoshis", balance))
+            Err(format!("Canister has insufficient funds. Balance: {} ckBTC", balance))
         }
         Ok((Err(e),)) => Err(format!("Transfer failed: {:?}", e)),
         Err(e) => Err(format!("Call failed: {:?}", e)),
     }
 }
 
+// Helper to convert ckBTC (float) to satoshis (u64)
+fn ckbtc_to_sats(amount: f64) -> u64 {
+    (amount * 100_000_000.0).round() as u64
+}
+
 // Deposit ckBTC (user must approve first)
 #[update]
-async fn deposit_ckbtc(amount: u64) -> String {
+async fn deposit_ckbtc(amount: f64) -> String {
     if let Err(e) = ensure_not_paused() {
         return e;
     }
-    
-    if amount == 0 {
+    if amount <= 0.0 {
         return "Amount must be greater than 0".to_string();
     }
-
+    let sats = ckbtc_to_sats(amount);
     let user = caller();
     let s = state();
-    
     match s.users.get_mut(&user) {
         Some(data) => {
-            // Check allowance first
-            let total_required = amount + CKBTC_TRANSFER_FEE;
+            let total_required = sats + CKBTC_TRANSFER_FEE;
             match check_allowance(user).await {
                 Ok(allowance) => {
                     if allowance.allowance.0.to_u64().unwrap_or(0) < total_required {
-                        return format!("Insufficient allowance. Please approve {} satoshis in your Plug wallet first.", total_required);
+                        return format!("Insufficient allowance. Please approve {} ckBTC in your Plug wallet first.", (total_required as f64) / 100_000_000.0);
                     }
                 }
                 Err(e) => return format!("Failed to check allowance: {}", e),
             }
-
-            // Transfer ckBTC from user to canister
             match transfer_ckbtc_from_user_to_canister(user, total_required).await {
                 Ok(tx_id) => {
-                    data.ckbtc_balance += amount;
-                    format!("Deposited {} satoshis (fee: {} satoshis). Transaction ID: {}", amount, CKBTC_TRANSFER_FEE, tx_id)
+                    data.ckbtc_balance += sats;
+                    format!("Deposited {:.8} ckBTC (fee: {:.8} ckBTC). Transaction ID: {}", amount, (CKBTC_TRANSFER_FEE as f64)/100_000_000.0, tx_id)
                 }
                 Err(e) => format!("Deposit failed: {}", e),
             }
@@ -400,30 +400,27 @@ async fn deposit_ckbtc(amount: u64) -> String {
 
 // Withdraw ckBTC
 #[update]
-async fn withdraw_ckbtc(amount: u64) -> String {
+async fn withdraw_ckbtc(amount: f64) -> String {
     if let Err(e) = ensure_not_paused() {
         return e;
     }
-    
-    if amount == 0 {
+    if amount <= 0.0 {
         return "Amount must be greater than 0".to_string();
     }
-
+    let sats = ckbtc_to_sats(amount);
     let user = caller();
     let s = state();
-    
     match s.users.get_mut(&user) {
         Some(data) => {
-            let total_required = amount + CKBTC_TRANSFER_FEE;
+            let total_required = sats + CKBTC_TRANSFER_FEE;
             if data.ckbtc_balance < total_required {
-                return format!("Insufficient balance. You have {} satoshis, need {} (including {} fee)", 
-                    data.ckbtc_balance, total_required, CKBTC_TRANSFER_FEE);
+                return format!("Insufficient balance. You have {:.8} ckBTC, need {:.8} (including {:.8} fee)", 
+                    (data.ckbtc_balance as f64)/100_000_000.0, (total_required as f64)/100_000_000.0, (CKBTC_TRANSFER_FEE as f64)/100_000_000.0);
             }
-
-            match transfer_ckbtc_from_canister_to_user(user, amount).await {
+            match transfer_ckbtc_from_canister_to_user(user, sats).await {
                 Ok(tx_id) => {
                     data.ckbtc_balance -= total_required;
-                    format!("Withdrew {} satoshis (fee: {} satoshis). Transaction ID: {}", amount, CKBTC_TRANSFER_FEE, tx_id)
+                    format!("Withdrew {:.8} ckBTC (fee: {:.8} ckBTC). Transaction ID: {}", amount, (CKBTC_TRANSFER_FEE as f64)/100_000_000.0, tx_id)
                 }
                 Err(e) => format!("Withdrawal failed: {}", e),
             }
@@ -434,34 +431,30 @@ async fn withdraw_ckbtc(amount: u64) -> String {
 
 // Borrow ckBTC (requires collateral)
 #[update]
-async fn borrow_ckbtc(amount: u64) -> String {
+async fn borrow_ckbtc(amount: f64) -> String {
     if let Err(e) = ensure_not_paused() {
         return e;
     }
-    
-    if amount == 0 {
+    if amount <= 0.0 {
         return "Amount must be greater than 0".to_string();
     }
-
+    let sats = ckbtc_to_sats(amount);
     let user = caller();
     let s = state();
-    
     match s.users.get_mut(&user) {
         Some(data) => {
-            let required_collateral = (amount as f64 * COLLATERAL_RATIO) as u64;
+            let required_collateral = (sats as f64 * COLLATERAL_RATIO) as u64;
             let available_collateral = data.ckbtc_balance + data.staked + data.lent + data.farmed;
-            
             if available_collateral < required_collateral {
-                return format!("Insufficient collateral. Required: {} satoshis, Available: {} satoshis", 
-                    required_collateral, available_collateral);
+                return format!("Insufficient collateral. Required: {:.8} ckBTC, Available: {:.8} ckBTC", 
+                    (required_collateral as f64)/100_000_000.0, (available_collateral as f64)/100_000_000.0);
             }
-
-            match transfer_ckbtc_from_canister_to_user(user, amount).await {
+            match transfer_ckbtc_from_canister_to_user(user, sats).await {
                 Ok(tx_id) => {
-                    data.loans += amount;
+                    data.loans += sats;
                     data.loan_timestamp = Some(ic_cdk::api::time());
-                    data.ckbtc_balance += amount; // Add borrowed amount to balance
-                    format!("Borrowed {} satoshis. Transaction ID: {}. Remember to repay with {}% annual interest.", 
+                    data.ckbtc_balance += sats;
+                    format!("Borrowed {:.8} ckBTC. Transaction ID: {}. Remember to repay with {}% annual interest.", 
                         amount, tx_id, (BORROW_RATE * 100.0) as u32)
                 }
                 Err(e) => format!("Borrow failed: {}", e),
@@ -473,59 +466,50 @@ async fn borrow_ckbtc(amount: u64) -> String {
 
 // Repay loan
 #[update]
-async fn repay_loan_ckbtc(amount: u64) -> String {
+async fn repay_loan_ckbtc(amount: f64) -> String {
     if let Err(e) = ensure_not_paused() {
         return e;
     }
-    
-    if amount == 0 {
+    if amount <= 0.0 {
         return "Amount must be greater than 0".to_string();
     }
-
+    let sats = ckbtc_to_sats(amount);
     let user = caller();
     let s = state();
-    
     match s.users.get_mut(&user) {
         Some(data) => {
             if data.loans == 0 {
                 return "No active loans to repay".to_string();
             }
-
             let interest = calculate_interest(data.loans, data.loan_timestamp, BORROW_RATE);
             let total_debt = data.loans + interest;
-            if amount > total_debt {
-                return format!("Amount exceeds total debt. Total debt (principal + interest): {} satoshis", total_debt);
+            if sats > total_debt {
+                return format!("Amount exceeds total debt. Total debt (principal + interest): {:.8} ckBTC", (total_debt as f64)/100_000_000.0);
             }
-
-            let total_required = amount + CKBTC_TRANSFER_FEE;
-            // Check allowance first
+            let total_required = sats + CKBTC_TRANSFER_FEE;
             match check_allowance(user).await {
                 Ok(allowance) => {
                     if allowance.allowance.0.to_u64().unwrap_or(0) < total_required {
-                        return format!("Insufficient allowance. Please approve {} satoshis in your Plug wallet first.", total_required);
+                        return format!("Insufficient allowance. Please approve {:.8} ckBTC in your Plug wallet first.", (total_required as f64)/100_000_000.0);
                     }
                 }
                 Err(e) => return format!("Failed to check allowance: {}", e),
             }
-
             match transfer_ckbtc_from_user_to_canister(user, total_required).await {
                 Ok(tx_id) => {
-                    // Deduct repayment from user's ckbtc_balance
                     if data.ckbtc_balance < total_required {
-                        return format!("Insufficient ckBTC balance to repay loan. You need {} (amount + fee), have {}.", total_required, data.ckbtc_balance);
+                        return format!("Insufficient ckBTC balance to repay loan. You need {:.8} (amount + fee), have {:.8}.", (total_required as f64)/100_000_000.0, (data.ckbtc_balance as f64)/100_000_000.0);
                     }
                     data.ckbtc_balance -= total_required;
-                    if amount >= data.loans {
-                        // Full repayment
+                    if sats >= data.loans {
                         data.loans = 0;
                         data.loan_timestamp = None;
                         format!("Loan fully repaid. Transaction ID: {}", tx_id)
                     } else {
-                        // Partial repayment
-                        data.loans -= amount;
-                        data.loan_timestamp = Some(ic_cdk::api::time()); // Reset interest calculation
-                        format!("Partial repayment of {} satoshis. Remaining debt: {} satoshis. Transaction ID: {}", 
-                            amount, data.loans, tx_id)
+                        data.loans -= sats;
+                        data.loan_timestamp = Some(ic_cdk::api::time());
+                        format!("Partial repayment of {:.8} ckBTC. Remaining debt: {:.8} ckBTC. Transaction ID: {}", 
+                            amount, (data.loans as f64)/100_000_000.0, tx_id)
                     }
                 }
                 Err(e) => format!("Repayment failed: {}", e),
@@ -537,26 +521,27 @@ async fn repay_loan_ckbtc(amount: u64) -> String {
 
 // Stake ckBTC
 #[update]
-async fn stake_ckbtc(amount: u64) -> String {
+async fn stake_ckbtc(amount: f64) -> String {
     if let Err(e) = ensure_not_paused() {
         return e;
     }
-    if amount == 0 {
+    if amount <= 0.0 {
         return "Amount must be greater than 0".to_string();
     }
+    let sats = ckbtc_to_sats(amount);
     let user = caller();
     let s = state();
     match s.users.get_mut(&user) {
         Some(data) => {
-            let total_required = amount + CKBTC_TRANSFER_FEE;
+            let total_required = sats + CKBTC_TRANSFER_FEE;
             if data.ckbtc_balance < total_required {
-                return format!("Insufficient ckBTC balance. You need {} (amount + fee), have {}.", total_required, data.ckbtc_balance);
+                return format!("Insufficient ckBTC balance. You need {:.8} (amount + fee), have {:.8}.", (total_required as f64)/100_000_000.0, (data.ckbtc_balance as f64)/100_000_000.0);
             }
             data.ckbtc_balance -= total_required;
-            data.staked += amount;
+            data.staked += sats;
             data.stake_timestamp = Some(ic_cdk::api::time());
-            format!("Staked {} satoshis (fee: {}). Earning {}% annual rewards.", 
-                amount, CKBTC_TRANSFER_FEE, (STAKING_RATE * 100.0) as u32)
+            format!("Staked {:.8} ckBTC (fee: {:.8}). Earning {}% annual rewards.", 
+                amount, (CKBTC_TRANSFER_FEE as f64)/100_000_000.0, (STAKING_RATE * 100.0) as u32)
         }
         None => "User not registered".to_string(),
     }
@@ -564,33 +549,34 @@ async fn stake_ckbtc(amount: u64) -> String {
 
 // Unstake ckBTC
 #[update]
-async fn unstake_ckbtc(amount: u64) -> String {
+async fn unstake_ckbtc(amount: f64) -> String {
     if let Err(e) = ensure_not_paused() {
         return e;
     }
-    if amount == 0 {
+    if amount <= 0.0 {
         return "Amount must be greater than 0".to_string();
     }
+    let sats = ckbtc_to_sats(amount);
     let user = caller();
     let s = state();
     match s.users.get_mut(&user) {
         Some(data) => {
             let rewards = calculate_interest(data.staked, data.stake_timestamp, STAKING_RATE);
-            let total_required = amount + CKBTC_TRANSFER_FEE;
+            let total_required = sats + CKBTC_TRANSFER_FEE;
             if data.staked < total_required {
-                return format!("Insufficient staked amount. You need {} (amount + fee), have {}.", total_required, data.staked);
+                return format!("Insufficient staked amount. You need {:.8} (amount + fee), have {:.8}.", (total_required as f64)/100_000_000.0, (data.staked as f64)/100_000_000.0);
             }
-            let total_to_send = amount + rewards;
+            let total_to_send = sats + rewards;
             match transfer_ckbtc_from_canister_to_user(user, total_to_send).await {
                 Ok(tx_id) => {
                     data.staked -= total_required;
-                    data.ckbtc_balance += amount + rewards; // Add both principal and rewards
+                    data.ckbtc_balance += sats + rewards;
                     if data.staked == 0 {
                         data.stake_timestamp = None;
                     } else {
                         data.stake_timestamp = Some(ic_cdk::api::time());
                     }
-                    format!("Unstaked {} satoshis + {} rewards (fee: {}). Transaction ID: {}", amount, rewards, CKBTC_TRANSFER_FEE, tx_id)
+                    format!("Unstaked {:.8} ckBTC + {:.8} rewards (fee: {:.8}). Transaction ID: {}", amount, (rewards as f64)/100_000_000.0, (CKBTC_TRANSFER_FEE as f64)/100_000_000.0, tx_id)
                 }
                 Err(e) => format!("Unstaking failed: {}", e),
             }
@@ -601,26 +587,27 @@ async fn unstake_ckbtc(amount: u64) -> String {
 
 // Lend ckBTC
 #[update]
-async fn lend_ckbtc(amount: u64) -> String {
+async fn lend_ckbtc(amount: f64) -> String {
     if let Err(e) = ensure_not_paused() {
         return e;
     }
-    if amount == 0 {
+    if amount <= 0.0 {
         return "Amount must be greater than 0".to_string();
     }
+    let sats = ckbtc_to_sats(amount);
     let user = caller();
     let s = state();
     match s.users.get_mut(&user) {
         Some(data) => {
-            let total_required = amount + CKBTC_TRANSFER_FEE;
+            let total_required = sats + CKBTC_TRANSFER_FEE;
             if data.ckbtc_balance < total_required {
-                return format!("Insufficient ckBTC balance. You need {} (amount + fee), have {}.", total_required, data.ckbtc_balance);
+                return format!("Insufficient ckBTC balance. You need {:.8} (amount + fee), have {:.8}.", (total_required as f64)/100_000_000.0, (data.ckbtc_balance as f64)/100_000_000.0);
             }
             data.ckbtc_balance -= total_required;
-            data.lent += amount;
+            data.lent += sats;
             data.lend_timestamp = Some(ic_cdk::api::time());
-            format!("Lent {} satoshis (fee: {}). Earning {}% annual rewards.", 
-                amount, CKBTC_TRANSFER_FEE, (LENDING_REWARD * 100.0) as u32)
+            format!("Lent {:.8} ckBTC (fee: {:.8}). Earning {}% annual rewards.", 
+                amount, (CKBTC_TRANSFER_FEE as f64)/100_000_000.0, (LENDING_REWARD * 100.0) as u32)
         }
         None => "User not registered".to_string(),
     }
@@ -628,33 +615,34 @@ async fn lend_ckbtc(amount: u64) -> String {
 
 // Unlend ckBTC
 #[update]
-async fn unlend_ckbtc(amount: u64) -> String {
+async fn unlend_ckbtc(amount: f64) -> String {
     if let Err(e) = ensure_not_paused() {
         return e;
     }
-    if amount == 0 {
+    if amount <= 0.0 {
         return "Amount must be greater than 0".to_string();
     }
+    let sats = ckbtc_to_sats(amount);
     let user = caller();
     let s = state();
     match s.users.get_mut(&user) {
         Some(data) => {
             let rewards = calculate_interest(data.lent, data.lend_timestamp, LENDING_REWARD);
-            let total_required = amount + CKBTC_TRANSFER_FEE;
+            let total_required = sats + CKBTC_TRANSFER_FEE;
             if data.lent < total_required {
-                return format!("Insufficient lent amount. You need {} (amount + fee), have {}.", total_required, data.lent);
+                return format!("Insufficient lent amount. You need {:.8} (amount + fee), have {:.8}.", (total_required as f64)/100_000_000.0, (data.lent as f64)/100_000_000.0);
             }
-            let total_to_send = amount + rewards;
+            let total_to_send = sats + rewards;
             match transfer_ckbtc_from_canister_to_user(user, total_to_send).await {
                 Ok(tx_id) => {
                     data.lent -= total_required;
-                    data.ckbtc_balance += amount + rewards; // Add both principal and rewards
+                    data.ckbtc_balance += sats + rewards;
                     if data.lent == 0 {
                         data.lend_timestamp = None;
                     } else {
                         data.lend_timestamp = Some(ic_cdk::api::time());
                     }
-                    format!("Unlent {} satoshis + {} rewards (fee: {}). Transaction ID: {}", amount, rewards, CKBTC_TRANSFER_FEE, tx_id)
+                    format!("Unlent {:.8} ckBTC + {:.8} rewards (fee: {:.8}). Transaction ID: {}", amount, (rewards as f64)/100_000_000.0, (CKBTC_TRANSFER_FEE as f64)/100_000_000.0, tx_id)
                 }
                 Err(e) => format!("Unlending failed: {}", e),
             }
@@ -665,26 +653,27 @@ async fn unlend_ckbtc(amount: u64) -> String {
 
 // Yield farm ckBTC
 #[update]
-async fn yield_farm_ckbtc(amount: u64) -> String {
+async fn yield_farm_ckbtc(amount: f64) -> String {
     if let Err(e) = ensure_not_paused() {
         return e;
     }
-    if amount == 0 {
+    if amount <= 0.0 {
         return "Amount must be greater than 0".to_string();
     }
+    let sats = ckbtc_to_sats(amount);
     let user = caller();
     let s = state();
     match s.users.get_mut(&user) {
         Some(data) => {
-            let total_required = amount + CKBTC_TRANSFER_FEE;
+            let total_required = sats + CKBTC_TRANSFER_FEE;
             if data.ckbtc_balance < total_required {
-                return format!("Insufficient ckBTC balance. You need {} (amount + fee), have {}.", total_required, data.ckbtc_balance);
+                return format!("Insufficient ckBTC balance. You need {:.8} (amount + fee), have {:.8}.", (total_required as f64)/100_000_000.0, (data.ckbtc_balance as f64)/100_000_000.0);
             }
             data.ckbtc_balance -= total_required;
-            data.farmed += amount;
+            data.farmed += sats;
             data.farm_timestamp = Some(ic_cdk::api::time());
-            format!("Started yield farming with {} satoshis (fee: {}). Earning {}% annual rewards.", 
-                amount, CKBTC_TRANSFER_FEE, (YIELD_FARMING_REWARD * 100.0) as u32)
+            format!("Started yield farming with {:.8} ckBTC (fee: {:.8}). Earning {}% annual rewards.", 
+                amount, (CKBTC_TRANSFER_FEE as f64)/100_000_000.0, (YIELD_FARMING_REWARD * 100.0) as u32)
         }
         None => "User not registered".to_string(),
     }
@@ -692,33 +681,34 @@ async fn yield_farm_ckbtc(amount: u64) -> String {
 
 // Stop yield farming
 #[update]
-async fn unfarm_ckbtc(amount: u64) -> String {
+async fn unfarm_ckbtc(amount: f64) -> String {
     if let Err(e) = ensure_not_paused() {
         return e;
     }
-    if amount == 0 {
+    if amount <= 0.0 {
         return "Amount must be greater than 0".to_string();
     }
+    let sats = ckbtc_to_sats(amount);
     let user = caller();
     let s = state();
     match s.users.get_mut(&user) {
         Some(data) => {
             let rewards = calculate_interest(data.farmed, data.farm_timestamp, YIELD_FARMING_REWARD);
-            let total_required = amount + CKBTC_TRANSFER_FEE;
+            let total_required = sats + CKBTC_TRANSFER_FEE;
             if data.farmed < total_required {
-                return format!("Insufficient farmed amount. You need {} (amount + fee), have {}.", total_required, data.farmed);
+                return format!("Insufficient farmed amount. You need {:.8} (amount + fee), have {:.8}.", (total_required as f64)/100_000_000.0, (data.farmed as f64)/100_000_000.0);
             }
-            let total_to_send = amount + rewards;
+            let total_to_send = sats + rewards;
             match transfer_ckbtc_from_canister_to_user(user, total_to_send).await {
                 Ok(tx_id) => {
                     data.farmed -= total_required;
-                    data.ckbtc_balance += amount + rewards; // Add both principal and rewards
+                    data.ckbtc_balance += sats + rewards;
                     if data.farmed == 0 {
                         data.farm_timestamp = None;
                     } else {
                         data.farm_timestamp = Some(ic_cdk::api::time());
                     }
-                    format!("Stopped farming {} satoshis + {} rewards (fee: {}). Transaction ID: {}", amount, rewards, CKBTC_TRANSFER_FEE, tx_id)
+                    format!("Stopped farming {:.8} ckBTC + {:.8} rewards (fee: {:.8}). Transaction ID: {}", amount, (rewards as f64)/100_000_000.0, (CKBTC_TRANSFER_FEE as f64)/100_000_000.0, tx_id)
                 }
                 Err(e) => format!("Unfarming failed: {}", e),
             }
@@ -752,7 +742,7 @@ async fn claim_staking_rewards() -> String {
                     data.staked -= CKBTC_TRANSFER_FEE;
                     data.ckbtc_balance += rewards;
                     data.stake_timestamp = Some(ic_cdk::api::time());
-                    format!("Claimed {} satoshis as staking rewards (fee: {}). Transaction ID: {}", rewards, CKBTC_TRANSFER_FEE, tx_id)
+                    format!("Claimed {} ckBTC as staking rewards (fee: {}). Transaction ID: {}", rewards, CKBTC_TRANSFER_FEE, tx_id)
                 }
                 Err(e) => format!("Claim failed: {}", e),
             }
@@ -784,7 +774,7 @@ async fn claim_lending_rewards() -> String {
                     data.lent -= CKBTC_TRANSFER_FEE;
                     data.ckbtc_balance += rewards;
                     data.lend_timestamp = Some(ic_cdk::api::time());
-                    format!("Claimed {} satoshis as lending rewards (fee: {}). Transaction ID: {}", rewards, CKBTC_TRANSFER_FEE, tx_id)
+                    format!("Claimed {} ckBTC as lending rewards (fee: {}). Transaction ID: {}", rewards, CKBTC_TRANSFER_FEE, tx_id)
                 }
                 Err(e) => format!("Claim failed: {}", e),
             }
@@ -816,7 +806,7 @@ async fn claim_yield_farming_rewards() -> String {
                     data.farmed -= CKBTC_TRANSFER_FEE;
                     data.ckbtc_balance += rewards;
                     data.farm_timestamp = Some(ic_cdk::api::time());
-                    format!("Claimed {} satoshis as yield farming rewards (fee: {}). Transaction ID: {}", rewards, CKBTC_TRANSFER_FEE, tx_id)
+                    format!("Claimed {} ckBTC as yield farming rewards (fee: {}). Transaction ID: {}", rewards, CKBTC_TRANSFER_FEE, tx_id)
                 }
                 Err(e) => format!("Claim failed: {}", e),
             }
@@ -870,7 +860,7 @@ async fn emergency_withdraw_all() -> String {
                     data.lend_timestamp = None;
                     data.farm_timestamp = None;
 
-                    format!("Emergency withdrawal successful. Total withdrawn: {} satoshis (includes all rewards, minus fee). Transaction ID: {}", 
+                    format!("Emergency withdrawal successful. Total withdrawn: {} ckBTC (includes all rewards, minus fee). Transaction ID: {}", 
                         withdrawable, tx_id)
                 }
                 Err(e) => format!("Emergency withdrawal failed: {}", e),
@@ -904,11 +894,11 @@ fn get_platform_stats() -> String {
         "Platform Statistics:\n\
         Network: {}\n\
         Total Users: {}\n\
-        Total Deposits: {} satoshis\n\
-        Total Loans: {} satoshis\n\
-        Total Staked: {} satoshis\n\
-        Total Lent: {} satoshis\n\
-        Total Yield Farming: {} satoshis\n\
+        Total Deposits: {} ckBTC\n\
+        Total Loans: {} ckBTC\n\
+        Total Staked: {} ckBTC\n\
+        Total Lent: {} ckBTC\n\
+        Total Yield Farming: {} ckBTC\n\
         Contract Status: {}",
         if IS_TESTNET { "Testnet" } else { "Mainnet" },
         user_count,
@@ -939,8 +929,8 @@ fn get_integration_guide() -> String {
         4. View your data: `get_my_data()`\n\
         5. Check pending rewards: `get_pending_*_rewards()`\n\n\
         💡 Network: {}\n\
-        💡 All amounts are in satoshis (1 BTC = 100,000,000 satoshis)\n\
-        💡 Transfer fee: {} satoshis per transaction",
+        💡 All amounts are in ckBTC (1 BTC = 100,000,000 ckBTC)\n\
+        💡 Transfer fee: {} ckBTC per transaction",
         ic_cdk::id().to_text(),
         (STAKING_RATE * 100.0) as u32,
         (LENDING_REWARD * 100.0) as u32,

@@ -9,13 +9,21 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const setupAuth = async () => {
-      const client = await AuthClient.create();
-      setAuthClient(client);
+      try {
+        const client = await AuthClient.create();
+        setAuthClient(client);
 
-      const identity = client.getIdentity();
-      const principalText = identity.getPrincipal().toText();
-      if (principalText !== "2vxsx-fae") {
-        setPrincipal(principalText);
+        const identity = client.getIdentity();
+        const principalObj = identity.getPrincipal();
+        const principalText = principalObj ? principalObj.toText() : null;
+        if (principalText && principalText !== "2vxsx-fae") {
+          setPrincipal(principalText);
+        } else {
+          setPrincipal(null);
+        }
+      } catch (err) {
+        console.error("AuthContext setup error:", err);
+        setPrincipal(null);
       }
     };
 
@@ -28,7 +36,8 @@ export const AuthProvider = ({ children }) => {
       identityProvider: "https://identity.ic0.app",
       onSuccess: async () => {
         const identity = authClient.getIdentity();
-        setPrincipal(identity.getPrincipal().toText());
+        const principalObj = identity.getPrincipal();
+        setPrincipal(principalObj ? principalObj.toText() : null);
       },
     });
   };
@@ -38,6 +47,11 @@ export const AuthProvider = ({ children }) => {
     await authClient.logout();
     setPrincipal(null);
   };
+
+  // Add a debug log for principal changes
+  useEffect(() => {
+    console.log("AuthContext principal changed:", principal);
+  }, [principal]);
 
   return (
     <AuthContext.Provider value={{ principal, login, logout, authClient }}>

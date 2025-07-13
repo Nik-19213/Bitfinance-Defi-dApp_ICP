@@ -1,8 +1,16 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useContext } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Bitcoin, ShieldCheck, ArrowRight } from "lucide-react";
+import { AuthContext } from "../context/AuthContext";
 
 const Home = () => {
+  const { principal } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  const handleRegister = () => {
+    navigate("/register");
+  };
+
   return (
     <div className="relative min-h-screen flex flex-col px-4 text-center overflow-hidden bg-black">
 
@@ -27,6 +35,16 @@ const Home = () => {
             Decentralized finance redefined — lend, borrow, stake & farm ckBTC securely using the power of Internet Computer Protocol.
           </p>
 
+          {/* Register Button */}
+          {principal && (
+            <button
+              onClick={handleRegister}
+              className="mb-6 bg-yellow-500 text-black px-6 py-3 rounded-xl font-semibold hover:bg-yellow-600 active:scale-95 transition duration-200 shadow-lg"
+            >
+              Register as User
+            </button>
+          )}
+
           {/* 4 Buttons */}
           <div className="flex flex-wrap items-center justify-center gap-4">
 
@@ -50,7 +68,7 @@ const Home = () => {
 
             <Link to="/yield">
               <button className="flex items-center gap-2 bg-pink-500 text-white px-6 py-3 rounded-xl hover:bg-pink-600 active:scale-95 transition shadow-lg">
-                Yield Farm <ArrowRight size={18} />
+                Farm ckBTC <ArrowRight size={18} />
               </button>
             </Link>
 

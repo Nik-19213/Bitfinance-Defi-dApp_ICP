@@ -16,7 +16,10 @@ const Stake = () => {
       try {
         const data = await bitfinance_backend.get_my_data();
         if (data && data.length > 0) setUserData(data[0]);
-      } catch (err) { }
+        else setUserData({ staked: 0, stake_timestamp: null });
+      } catch (err) {
+        setUserData({ staked: 0, stake_timestamp: null });
+      }
     };
     fetchData();
   }, [principal]);
@@ -59,10 +62,10 @@ const Stake = () => {
         {/* Staked Amount Display - right upper corner */}
         <div className="mb-6 md:mb-0 md:ml-auto bg-gray-900 rounded-xl px-6 py-4 border border-yellow-500 text-center min-w-[260px]">
           <div className="text-lg text-yellow-400 font-bold">
-            Staked: {userData ? (userData.staked / 1e8).toFixed(8) : "0.00000000"} ckBTC
+            Staked: {(Number(userData?.staked ?? 0) / 1e8).toFixed(8)} ckBTC
           </div>
           <div className="text-gray-400 text-sm">
-            {userData && userData.stake_timestamp
+            {userData && userData.stake_timestamp && Number(userData.stake_timestamp) > 0
               ? "Since: " +
               new Date(Number(userData.stake_timestamp) * 1000).toLocaleString()
               : "No active stake"}
@@ -82,7 +85,8 @@ const Stake = () => {
           </label>
           <input
             type="number"
-            step="0.0001"
+            step="0.00000001"
+            min="0"
             value={stakeAmount}
             onChange={(e) => setStakeAmount(e.target.value)}
             required
@@ -111,7 +115,8 @@ const Stake = () => {
           </label>
           <input
             type="number"
-            step="0.0001"
+            step="0.00000001"
+            min="0"
             value={unstakeAmount}
             onChange={(e) => setUnstakeAmount(e.target.value)}
             required

@@ -58,16 +58,16 @@ type UserData = record {
 
 service : {
     register_user : () -> (text);
-    deposit_ckbtc : (nat64) -> (text);
-    withdraw_ckbtc : (nat64) -> (text);
-    borrow_ckbtc : (nat64) -> (text);
-    repay_loan_ckbtc : (nat64) -> (text);
-    stake_ckbtc : (nat64) -> (text);
-    unstake_ckbtc : (nat64) -> (text);
-    lend_ckbtc : (nat64) -> (text);
-    unlend_ckbtc : (nat64) -> (text);
-    yield_farm_ckbtc : (nat64) -> (text);
-    unfarm_ckbtc : (nat64) -> (text);
+    deposit_ckbtc : (float64) -> (text);
+    withdraw_ckbtc : (float64) -> (text);
+    borrow_ckbtc : (float64) -> (text);
+    repay_loan_ckbtc : (float64) -> (text);
+    stake_ckbtc : (float64) -> (text);
+    unstake_ckbtc : (float64) -> (text);
+    lend_ckbtc : (float64) -> (text);
+    unlend_ckbtc : (float64) -> (text);
+    yield_farm_ckbtc : (float64) -> (text);
+    unfarm_ckbtc : (float64) -> (text);
     claim_staking_rewards : () -> (text);
     claim_lending_rewards : () -> (text);
     claim_yield_farming_rewards : () -> (text);
